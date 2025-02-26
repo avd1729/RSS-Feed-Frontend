@@ -1,4 +1,4 @@
-package com.example.rssreader
+package com.example.rss
 
 import android.os.Bundle
 import android.util.Log
