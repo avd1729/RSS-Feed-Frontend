@@ -189,7 +189,6 @@ suspend fun fetchAllRssFeeds(urls: List<String>): List<RssItem> {
     return allItems
 }
 
-// Fetch a single RSS feed
 suspend fun fetchRssFeed(url: String): List<RssItem> {
     return try {
         val doc = Jsoup.connect(url)
@@ -198,15 +197,24 @@ suspend fun fetchRssFeed(url: String): List<RssItem> {
             .get()
 
         val items = doc.select("item, entry")
-        items.map {
+        items.map { element ->
+            val linkElement = element.select("link[rel=alternate]")
+            val link = if (linkElement.isNotEmpty()) {
+                linkElement.attr("href")
+            } else {
+                element.select("link").text()
+            }
+
+            val categories = element.select("category").map {
+                it.attr("term").ifEmpty { it.text() }  // Extract "term" attribute first, fallback to text
+            }
+
             RssItem(
-                title = it.select("title").text(),
-                link = it.select("link").text(),
-                description = Jsoup.parse(it.select("description, summary").text()).text(),
-                categories = it.select("category").map { category ->
-                    category.attr("term").ifEmpty { category.text() } // Extract 'term' attribute if available
-                },
-                content = Jsoup.parse(it.select("content").text()).text()
+                title = element.select("title").text(),
+                link = link,
+                description = Jsoup.parse(element.select("description, summary").text()).text(),
+                categories = categories.filter { it.isNotBlank() }, // Filter out empty categories
+                content = Jsoup.parse(element.select("content").text()).text()
             )
         }
     } catch (e: Exception) {
@@ -214,4 +222,6 @@ suspend fun fetchRssFeed(url: String): List<RssItem> {
         emptyList()
     }
 }
+
+
 
